@@ -120,8 +120,9 @@ const HomePage = () => {
                 
             }  
         } catch (error) {
-            console.log(error)
-            toast.error('Failed to register user');
+            console.log(error);
+            const errMsg = error.response?.data?.error || 'Failed to register user';
+            toast.error(errMsg);
         }
         };
 

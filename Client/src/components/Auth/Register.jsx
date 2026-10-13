@@ -19,7 +19,8 @@ const UserRegistration = () => {
       
 
     } catch (error) {
-      toast.error('Failed to register user');
+      const errMsg = error.response?.data?.error || 'Failed to register user';
+      toast.error(errMsg);
     }
   };
 

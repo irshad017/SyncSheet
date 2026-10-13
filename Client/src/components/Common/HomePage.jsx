@@ -7,6 +7,7 @@ import { boolAtom } from "./Atom";
 import {Toaster ,toast} from "react-hot-toast";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import { API_BASE_URL } from "../../config/api";
 
 
 
@@ -77,7 +78,7 @@ const HomePage = () => {
         const handleSubmitLog = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:5000/api/login', { username, password });
+            const response = await axios.post(`${API_BASE_URL}/api/login`, { username, password });
             if (response.status === 200) {
             // console.log(response)
             localStorage.setItem('token', `Bearer ${response.data.token}`);
@@ -103,7 +104,7 @@ const HomePage = () => {
         const handleSubmitSign = async (e) => {
         e.preventDefault();
             try {
-            const response = await axios.post('http://localhost:5000/api/register', { username, password });
+            const response = await axios.post(`${API_BASE_URL}/api/register`, { username, password });
             if (response.status === 200) {
                 toast.success('Registration successful');
                 localStorage.setItem('token', `Bearer ${response.data.token}`);

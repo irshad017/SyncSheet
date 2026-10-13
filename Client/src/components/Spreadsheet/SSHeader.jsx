@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClose, faShare, faUsd, faUser } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 import toast, { ToastBar, Toaster } from 'react-hot-toast';
+import { API_BASE_URL } from '../../config/api';
 import CreateSS from '../Common/CreateSS';
 import CreateSSNew from '../Common/CreateSSNew';
 import CreateSSNewList from '../Common/createSSNewList';
@@ -96,7 +97,7 @@ const Header = ({ sheetId }) => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await axios.get('http://localhost:5000/api/emails');
+                const response = await axios.get(`${API_BASE_URL}/api/emails`);
                 if (response && response.data) {
                     const emails = response.data.data.map(user => user.username);
                     setTemp(emails);
@@ -148,7 +149,7 @@ const Header = ({ sheetId }) => {
         setSearchTerm(`${email.slice(0, 4)}`);
         setSelectedEmail(email);
         try {
-            const response = await axios.post('http://localhost:5000/share', {
+            const response = await axios.post(`${API_BASE_URL}/api/user/share`, {
                 email,
                 sheetId,
             });

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Toaster, toast } from 'react-hot-toast';
 import {jwtDecode }from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../config/api';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -12,7 +13,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/login', { username, password });
+      const response = await axios.post(`${API_BASE_URL}/api/login`, { username, password });
       if (response.status === 200) {
         localStorage.setItem('token', `Bearer ${response.data.token}`);
         const decodeToken = jwtDecode(response.data.token);

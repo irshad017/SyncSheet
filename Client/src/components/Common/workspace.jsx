@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import axios from 'axios';
 import React, { useCallback, useEffect, useState, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../config/api';
 import CreateSS from './CreateSS';
 import { FaDownload } from 'react-icons/fa';
 import toast, { Toaster } from 'react-hot-toast';
@@ -81,7 +82,7 @@ const Templates = memo(() => {
         const fetchUser = async () => {
             const userId = localStorage.getItem('userId');
                 try {
-                    const userResponse = await axios.get(`http://localhost:5000/api/user/${userId}`);
+                    const userResponse = await axios.get(`${API_BASE_URL}/api/user/${userId}`);
                     setUserDel(userResponse.data.username);
                     
                     // setLoading(false);
@@ -103,7 +104,7 @@ const Templates = memo(() => {
         const fetchUserDetails = async () => {
             const userId = localStorage.getItem('userId');
                 try {
-                    const userResponse = await axios.get(`http://localhost:5000/api/user/${userId}`);
+                    const userResponse = await axios.get(`${API_BASE_URL}/api/user/${userId}`);
                     setUser(userResponse.data);
                     // console.log("Hii",user)
                     setTemp(userResponse.data.spreadsheet);
@@ -133,7 +134,7 @@ const Templates = memo(() => {
 
     const handleDelete = async ()=>{
         try{
-            const response = await axios.get(`http://localhost:5000/delete/${userDel}`)
+            const response = await axios.get(`${API_BASE_URL}/delete/${userDel}`)
             if(response.ok){
                 console.log("Deleted sheet", sheetId)
             }
@@ -238,7 +239,7 @@ const ProfileSlider = memo(({ isOpen, onClose }) => {
         const fetchUserDetails = async () => {
             const userId = localStorage.getItem('userId');
                 try {
-                    const userResponse = await axios.get(`http://localhost:5000/api/user/${userId}`);
+                    const userResponse = await axios.get(`${API_BASE_URL}/api/user/${userId}`);
                     setUser(userResponse.data);
                     const data = userResponse.data.username.split('@')[0]
                     setUserName(data)

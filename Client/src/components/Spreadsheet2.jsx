@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import debounce from 'lodash.debounce';
 import { FixedSizeGrid as Grid } from 'react-window';
 import AddCollaboratorForm from './RealTimeCollaboration/addCollaborator';
+import { API_BASE_URL, WS_BASE_URL } from '../config/api';
 
 const rowLength = 999;
 const columnLength = 27;
@@ -61,7 +62,7 @@ function Spreadsheet2() {
     const fetchSpreadsheet = async () => {
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch(`http://localhost:5000/api/spreadsheet/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/spreadsheet/${id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -89,7 +90,7 @@ function Spreadsheet2() {
     fetchSpreadsheet();
 
     const connectWebSocket = () => {
-      const wsClient = new WebSocket(`ws://localhost:5000/?spreadsheetId=${id}&clientId=${clientId.current}`);
+      const wsClient = new WebSocket(`${WS_BASE_URL}/?spreadsheetId=${id}&clientId=${clientId.current}`);
 
       wsClient.onopen = () => {
         setWs(wsClient);

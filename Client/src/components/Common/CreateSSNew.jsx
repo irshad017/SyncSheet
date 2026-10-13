@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { FaPlus } from 'react-icons/fa';
+import { API_BASE_URL } from '../../config/api';
 
 const DEFAULT_ROW_COUNT = 199;
 const DEFAULT_COLUMN_COUNT = 26;
@@ -23,7 +24,7 @@ function CreateSSNew ( ) {
         const fetchUserDetails = async () => {
             const userId = localStorage.getItem('userId');
             try {
-                const userResponse = await axios.get(`http://localhost:5000/api/user/${userId}`);
+                const userResponse = await axios.get(`${API_BASE_URL}/api/user/${userId}`);
                 setUser(userResponse.data);
                 setSpreadsheets(userResponse.data.spreadsheet);
                 setLoading(false);
@@ -51,7 +52,7 @@ function CreateSSNew ( ) {
         console.log(Title)
         try {
             console.log('Creating spreadsheet with name:', Title, 'and owner:', userId);
-            const response = await axios.post('http://localhost:5000/api/spreadsheet', {
+            const response = await axios.post(`${API_BASE_URL}/api/spreadsheet`, {
                 name: Title,
                 owner: userId
             });

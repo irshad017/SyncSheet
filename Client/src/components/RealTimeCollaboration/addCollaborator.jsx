@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Toaster, toast } from 'react-hot-toast';
+import { API_BASE_URL } from '../../config/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAdd, faShare, faUser } from '@fortawesome/free-solid-svg-icons';
 import { FaRegChartBar } from 'react-icons/fa';
@@ -79,7 +80,7 @@ const AddCollaboratorForm = ({ spreadsheetId }) => {
     const fetchUsers = async () => {
         try {
             toast.loading("Loading... Emails");
-            const response = await axios.get('http://localhost:5000/api/emails');
+            const response = await axios.get(`${API_BASE_URL}/api/emails`);
             if (response && response.data) {
                 const emails = response.data.data.map(user => user.username);
                 setTemp(emails);
@@ -108,7 +109,7 @@ const AddCollaboratorForm = ({ spreadsheetId }) => {
     if (username.trim()) {
       try {
         console.log('Submitting:', { spreadsheetId, username });
-        const response = await axios.post('/api/add-collaborator', {
+        const response = await axios.post(`${API_BASE_URL}/api/add-collaborator`, {
           spreadsheetId,
           collaboratorUsername: username,
         });

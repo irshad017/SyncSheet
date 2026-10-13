@@ -293,10 +293,20 @@ app.post('/api/spreadsheet/:id', async (req, res) => {
 const server = http.createServer(app);
 const wsServer = new WebSocketServer({ server });
 
+const spreadsheetClients = new Map(); 
+
 wsServer.on('connection', (ws, req) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const spreadsheetId = url.searchParams.get('spreadsheetId');
   const clientId = url.searchParams.get('clientId');
+
+  if (!spreadsheetClients.has(spreadsheetId)) {
+    spreadsheetClients.set(spreadsheetId, new Set());
+  }
+  spreadsheetClients.get(spreadsheetId).add(ws);
+
+  console.log(`Client ${clientId} connected to spreadsheet ${spreadsheetId}`);
+  console.log(`Connected users for ${spreadsheetId}:`, spreadsheetClients.get(spreadsheetId).size);
 
   ws.on('message', (message) => {
     const { type, row, col, value } = JSON.parse(message);
@@ -306,7 +316,7 @@ wsServer.on('connection', (ws, req) => {
         if (cellData) {
           cellData.cells[row][col] = value;
           cellData.save().then(() => {
-            wsServer.clients.forEach((client) => {
+            spreadsheetClients.get(spreadsheetId).forEach((client) => {
               if (client !== ws && client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({ type: 'update', id: spreadsheetId, cells: cellData.cells }));
               }
@@ -318,7 +328,7 @@ wsServer.on('connection', (ws, req) => {
       });
     } else if (type === 'select') {
       const selectedCell = { row, col };
-      wsServer.clients.forEach((client) => {
+      spreadsheetClients.get(spreadsheetId).forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
           client.send(JSON.stringify({ type: 'select', id: spreadsheetId, selectedCell }));
         }
@@ -326,12 +336,21 @@ wsServer.on('connection', (ws, req) => {
     }
   });
 
+  // Send initial spreadsheet data
   Cell.findById(spreadsheetId).then((cellData) => {
-    ws.send(
-      JSON.stringify({ type: 'init', id: spreadsheetId, cells: cellData ? cellData.cells : 'Spreadsheet not found' })
-    );
+    ws.send(JSON.stringify({ type: 'init', id: spreadsheetId, cells: cellData ? cellData.cells : 'Spreadsheet not found' }));
   }).catch((error) => {
     console.error('Error initializing WebSocket:', error);
+  });
+
+  ws.on('close', () => {
+    const clients = spreadsheetClients.get(spreadsheetId);
+    if (clients) {
+      clients.delete(ws);
+      if (clients.size === 0) {
+        spreadsheetClients.delete(spreadsheetId);
+      }
+    }
   });
 });
 

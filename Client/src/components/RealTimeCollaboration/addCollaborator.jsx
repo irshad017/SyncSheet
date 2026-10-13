@@ -1,156 +1,166 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Toaster, toast } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { API_BASE_URL } from '../../config/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faAdd, faShare, faUser } from '@fortawesome/free-solid-svg-icons';
-import { FaRegChartBar } from 'react-icons/fa';
+import { faUser, faUserPlus } from '@fortawesome/free-solid-svg-icons';
 
+const CustomDropDown = ({ items, onSelect, placeholder, searchValue, onSearch, disabled }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef(null);
 
+    const handleItemClick = (item) => {
+        onSelect(item);
+        setIsOpen(false);
+    };
 
-const CustomDropDown = ({ items, onSelect, placeholder, searchValue, onSearch }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (containerRef.current && !containerRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
-  const handleItemClick = (item) => {
-      onSelect(item);
-      setIsOpen(false);
-  };
-
-  useEffect(() => {
-      const handleClickOutside = (event) => {
-          if (containerRef.current && !containerRef.current.contains(event.target)) {
-              setIsOpen(false);
-          }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  return (
-      <div ref={containerRef} className='relative'>
-          <input
-              type='text'
-              placeholder={placeholder}
-              value={searchValue}
-              onChange={(e) => onSearch(e.target.value)}
-              className= "mb-0 border-1 border-black hover:border-2 hover:border-black relative left-8 top-1 lg:w-60 md:w-56 mr-3 h-8 -sm:w-52 w-56  text-black px-1 md:px-6 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onClick={() => setIsOpen(!isOpen)}
-          />
-          {/* <i class="fas fa-users fa-2x"></i> */}
-          <FontAwesomeIcon className='relative  sm:top-2 md:-left-10 -left-6 text-lg text-gray-800 md:h-6 md:w-6 w-6 top-2 h-6 '  
-            icon={faUser} >
-            </FontAwesomeIcon>
-          <span className='relative invisible sm:visible left-2 top-1 text-xl font-medium text-gradient bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-blue-500 hover:underline hover:decoration-red-500'>
-            Real Time Collaboration
-            </span>
-          {isOpen && (
-              <div className=''>
-              <ul className="absolute max-h-68 lg:left-10 md:left-12 left-10 sm:max-w-60 sm:min-w-36 min-w-44 bg-white border rounded-md shadow-lg mt-1 z-10 overflow-y-auto">
-                  {items.length === 0 ? (
-                      <li className="px-4 py-2 text-gray-500">No results</li>
-                  ) : (
-                      items.map((item, index) => (
-                          <li
-                              key={index}
-                              onClick={() => handleItemClick(item)}
-                              className="border-2 border-gray-200 px-4 py-2 text-black hover:bg-gray-200 cursor-pointer"
-                          >
-                              {item}
-                          </li>
-                      ))
-                )}
-            </ul>
+    return (
+        <div ref={containerRef} className="relative w-full max-w-xs">
+            <div className="relative flex items-center">
+                <input
+                    type="text"
+                    placeholder={placeholder}
+                    value={searchValue}
+                    disabled={disabled}
+                    onChange={(e) => onSearch(e.target.value)}
+                    onFocus={() => setIsOpen(true)}
+                    className="w-full pl-9 pr-4 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                />
+                <FontAwesomeIcon
+                    icon={faUserPlus}
+                    className="absolute left-3 text-gray-400 text-sm pointer-events-none"
+                />
             </div>
-        )}
-      </div>
-  );
+
+            {isOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                    {items.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-500">
+                            {searchValue ? 'No matching users' : 'Type to search users'}
+                        </div>
+                    ) : (
+                        items.map((item, index) => (
+                            <div
+                                key={index}
+                                onClick={() => handleItemClick(item)}
+                                className="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition border-b border-gray-50 last:border-b-0 flex items-center space-x-2"
+                            >
+                                <FontAwesomeIcon icon={faUser} className="text-xs text-gray-400" />
+                                <span className="truncate">{item}</span>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+        </div>
+    );
 };
-
-
 
 const AddCollaboratorForm = ({ spreadsheetId }) => {
-  const [collaboratorUsername, setCollaboratorUsername] = useState('');
-  const [filterUsers,setFilteredUsers] = useState([])
-  const [temp,setTemp] = useState([])
-  const [searchTerm,setSearchTerm] = useState('')
-  const [bool,setBool] = useState(true)
+    const [allUsers, setAllUsers] = useState([]);
+    const [filteredUsers, setFilteredUsers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-        try {
-            toast.loading("Loading... Emails");
-            const response = await axios.get(`${API_BASE_URL}/api/emails`);
-            if (response && response.data) {
-                const emails = response.data.data.map(user => user.username);
-                setTemp(emails);
-                setFilteredUsers(emails);
-                toast.dismiss(); // Dismiss loading toast
+    useEffect(() => {
+        let isMounted = true;
+        const fetchUsers = async () => {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/emails`);
+                if (response.data && response.data.data && isMounted) {
+                    const currentUsername = localStorage.getItem('username') || '';
+                    const emails = response.data.data
+                        .map((u) => u.username)
+                        .filter((u) => u && u.toLowerCase() !== currentUsername.toLowerCase());
+                    setAllUsers(emails);
+                    setFilteredUsers(emails);
+                }
+            } catch (err) {
+                console.error('Error fetching collaborators list:', err);
             }
-        } catch (err) {
-            console.log("Error in fetching collaborators");
-            toast.dismiss(); // Dismiss loading toast
-            toast.error('Failed to fetch collaborators');
+        };
+
+        fetchUsers();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!searchTerm) {
+            setFilteredUsers(allUsers);
+        } else {
+            const filtered = allUsers.filter((email) =>
+                email.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            setFilteredUsers(filtered);
+        }
+    }, [searchTerm, allUsers]);
+
+    const handleAddCollaborator = async (username) => {
+        if (!username || !username.trim()) {
+            toast.error('Please select a valid user');
+            return;
+        }
+
+        if (!spreadsheetId) {
+            toast.error('Spreadsheet ID missing');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await axios.post(
+                `${API_BASE_URL}/api/add-collaborator`,
+                {
+                    spreadsheetId,
+                    collaboratorUsername: username.trim(),
+                },
+                {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                }
+            );
+
+            if (response.status === 200) {
+                toast.success(`Added ${username} as collaborator!`);
+                setSearchTerm('');
+            }
+        } catch (error) {
+            console.error('Error adding collaborator:', error);
+            const errMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to add collaborator';
+            toast.error(errMsg);
+        } finally {
+            setLoading(false);
         }
     };
-      fetchUsers();
-      
-  }, []);
 
-  useEffect(() => {
-    const filtered = temp.filter(email => email.toLowerCase().includes(searchTerm.toLowerCase()));
-    setFilteredUsers(filtered);
-  }, [searchTerm, temp]);
-
-
-  const handleSubmit = async (username) => {
-    // e.preventDefault();
-    console.log(username)
-    if (username.trim()) {
-      try {
-        console.log('Submitting:', { spreadsheetId, username });
-        const response = await axios.post(`${API_BASE_URL}/api/add-collaborator`, {
-          spreadsheetId,
-          collaboratorUsername: username,
-        });
-        console.log('Response:', response.data);
-        toast.success(`Collaborator added successfully!! `);
-        toast.success(`With ${username} `);
-      } catch (error) {
-        console.error('Error adding collaborator:', error);
-        if (error.response) {
-          console.log('Response error data:', error.response.data);
-        }
-        toast.error(error.response?.data?.error || 'Failed to add collaborator');
-      }
-      setCollaboratorUsername('');
-    }else {
-      toast.error('Username cannot be empty');
-    }
-  };
-
-  return (
-    <form  className="flex items-center space-x-2">
-      {/* <CustomDropDown /> */}
-      <CustomDropDown
-                    items={filterUsers}
-                    onSelect={handleSubmit}
-                    placeholder="Collab Sheet with"
-                    searchValue={searchTerm}
-                    onSearch={setSearchTerm}
-
-                />
-      { bool ? <></> : <button
-        className="fixed right-4 px-4 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        onClick={() => handleSubmit(collaboratorUsername)}
-      >
-        Add Collaborator
-      </button>}
-      <Toaster/>
-    </form>
-  );
+    return (
+        <div className="flex items-center space-x-3 px-3 py-1.5 bg-gray-50 border-b border-gray-200">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:inline">
+                Collaboration:
+            </span>
+            <CustomDropDown
+                items={filteredUsers}
+                onSelect={handleAddCollaborator}
+                placeholder="Share with user..."
+                searchValue={searchTerm}
+                onSearch={setSearchTerm}
+                disabled={loading}
+            />
+            {loading && <span className="text-xs text-blue-600 animate-pulse">Adding...</span>}
+        </div>
+    );
 };
-
-
 
 export default AddCollaboratorForm;

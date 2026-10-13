@@ -1,83 +1,64 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from '../../config/api';
 
-const DEFAULT_ROW_COUNT = 199;
-const DEFAULT_COLUMN_COUNT = 26;
-
-// Function to generate a 2D array representing the spreadsheet grid
-
-function CreateSS ( ) {
-    const [isBoxOpen,setBoxOpen] = useState(false)
+function CreateSS({ onCreated }) {
+    const [isBoxOpen, setBoxOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
-    const [user, setUser] = useState("");
-    const [spreadsheets, setSpreadsheets] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [newSpreadsheetName, setNewSpreadsheetName] = useState('');
-    const history = useNavigate();
 
-
-    useEffect(() => {
-        const fetchUserDetails = async () => {
-            const userId = localStorage.getItem('userId');
-            try {
-                const userResponse = await axios.get(`${API_BASE_URL}/api/user/${userId}`);
-                setUser(userResponse.data);
-                setSpreadsheets(userResponse.data.spreadsheet);
-                setLoading(false);
-            } catch (error) {
-                console.error('Failed to fetch user details:', error);
-            }
-        };
-
-        fetchUserDetails();
-        return () => {
-        setSpreadsheets([]);
-        setLoading(true);
-        };
-    }, []);
-
-    const handleOpenSpreadsheet = (spreadsheetId) => {
-        history(`/spreadsheet/${spreadsheetId}`);
-        console.log(`Open spreadsheet with ID: ${spreadsheetId}`);
-    };
-
-    const handleCreateSpreadsheet = async (Title) => {
-        // e.preventDefault();
+    const handleCreateSpreadsheet = async (title) => {
         const userId = localStorage.getItem('userId');
-        console.log(userId)
-        console.log(Title)
+        const token = localStorage.getItem('token');
+        if (!userId) {
+            toast.error('User not authenticated. Please log in.');
+            navigate('/');
+            return;
+        }
+
+        const sheetName = title && title.trim() ? title.trim() : 'Untitled Spreadsheet';
+
         try {
-            console.log('Creating spreadsheet with name:', Title, 'and owner:', userId);
-            const response = await axios.post(`${API_BASE_URL}/api/spreadsheet`, {
-                name: Title,
-                owner: userId
-            });
-            console.log('Spreadsheet created:', response.data);
-            setSpreadsheets([...spreadsheets, response.data]);
-            setNewSpreadsheetName('');
+            setIsSubmitting(true);
+            const response = await axios.post(
+                `${API_BASE_URL}/api/spreadsheet`,
+                {
+                    name: sheetName,
+                    owner: userId,
+                },
+                {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                }
+            );
+
             toast.success('Spreadsheet created successfully');
-            handleOpenSpreadsheet(response.data.id);
+            setBoxOpen(false);
+            if (onCreated) {
+                onCreated(response.data);
+            }
+            navigate(`/spreadsheet/${response.data.id}`);
         } catch (error) {
             console.error('Failed to create spreadsheet:', error);
-            toast.error(`Failed to create spreadsheet: ${error.response?.data?.error || error.message}`);
+            const errMsg = error.response?.data?.error || error.message || 'Failed to create spreadsheet';
+            toast.error(errMsg);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    
-
     return (
-        <div className="p-4">
+        <div className="mt-2">
             <button
                 onClick={() => setBoxOpen(true)}
-                className="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             >
                 Create
             </button>
             <Modal
                 isOpen={isBoxOpen}
+                isSubmitting={isSubmitting}
                 onClose={() => setBoxOpen(false)}
                 onCreate={handleCreateSpreadsheet}
             />
@@ -85,67 +66,66 @@ function CreateSS ( ) {
     );
 }
 
-
-
-const Modal = ({ isOpen, onClose, onCreate}) => {
-    const [title, setTitle] = useState('');
-    const [error, setError] = useState('');
-    const [newSpreadsheetName,setNewSpreadsheetName] = useState('')
+const Modal = ({ isOpen, onClose, onCreate, isSubmitting }) => {
+    const [newSpreadsheetName, setNewSpreadsheetName] = useState('');
 
     const handleSubmit = () => {
         onCreate(newSpreadsheetName);
         setNewSpreadsheetName('');
-        setError('Creating')
-        onClose();
     };
 
-    const handleOverlayClick =(e)=> {
-        if(e.target === e.currentTarget){
-            handleSubmit()
+    const handleOverlayClick = (e) => {
+        if (e.target === e.currentTarget) {
+            onClose();
         }
-    }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSubmit();
+        } else if (e.key === 'Escape') {
+            onClose();
+        }
+    };
 
     if (!isOpen) return null;
 
-    const handleSub = (e)=>{
-        if(e.key === 'Enter'){
-            onCreate(newSpreadsheetName)
-        }
-    }
-
     return (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50" onClick={handleOverlayClick}>
-            <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm mx-4 sm:mx-6 lg:max-w-md lg:mx-8">
-                <h2 className="text-lg font-semibold mb-4">Create a New Spreadsheet</h2>
-                {error && <p className="text-red-500 mb-2 text-sm text-center">{error}</p>}
+        <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={handleOverlayClick}
+        >
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 transform transition-all">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Create New Spreadsheet</h2>
                 <input
                     type="text"
                     value={newSpreadsheetName}
                     onChange={(e) => setNewSpreadsheetName(e.target.value)}
-                    onKeyDown={(e)=>{handleSub(e)}}
-                    placeholder="Enter title"
-                    required
-                    className=" p-2 min-w-full border border-gray-300 rounded mb-4"
+                    onKeyDown={handleKeyDown}
+                    placeholder="Enter spreadsheet title..."
+                    autoFocus
+                    className="w-full p-2.5 border border-gray-300 rounded-lg mb-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
-                <div className="flex flex-col sm:flex-row sm:justify-end">
-                    <button
-                        
-                        onClick={handleSubmit}
-                        className="bg-blue-500 text-white px-4 py-2 rounded mb-2 sm:mb-0 sm:mr-2 hover:bg-blue-600"
-                    >
-                        Create
-                    </button>
+                <div className="flex justify-end space-x-2">
                     <button
                         onClick={onClose}
-                        className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                        disabled={isSubmitting}
+                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
                     >
                         Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-sm disabled:opacity-50"
+                    >
+                        {isSubmitting ? 'Creating...' : 'Create'}
                     </button>
                 </div>
             </div>
         </div>
     );
-}
-
+};
 
 export default CreateSS;

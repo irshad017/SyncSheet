@@ -1,23 +1,14 @@
-// EFFICIENT CODE------
-// EFFICIENT CODE------
-// EFFICIENT CODE------
-// EFFICIENT CODE------
-// EFFICIENT CODE------
-// EFFICIENT CODE------
 import React, { useEffect, useRef, useState } from 'react';
-import { FaSearch, FaPlus, FaSave, FaFileExport, FaFileImport, FaUndo, FaRedo, FaBars, FaShare, FaCheckCircle, FaCrosshairs, FaRegCheckCircle, FaDownload, FaNeos, FaPills } from 'react-icons/fa';
+import { FaSave, FaFileExport, FaFileImport, FaBars, FaShareAlt } from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClose, faShare, faUsd, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faClose, faUser, faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
-import toast, { ToastBar, Toaster } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { API_BASE_URL } from '../../config/api';
-import CreateSS from '../Common/CreateSS';
 import CreateSSNew from '../Common/CreateSSNew';
 import CreateSSNewList from '../Common/createSSNewList';
 import { useNavigate, useParams } from 'react-router-dom';
-import AddCollaboratorForm from '../RealTimeCollaboration/addCollaborator';
 
-// Custom Dropdown Component
 const CustomDropDown = ({ items, onSelect, placeholder, searchValue, onSearch }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
@@ -38,317 +29,330 @@ const CustomDropDown = ({ items, onSelect, placeholder, searchValue, onSearch })
     }, []);
 
     return (
-        <div ref={containerRef} className='relative'>
-            <input
-                type='text'
-                placeholder={placeholder}
-                value={searchValue}
-                onChange={(e) => onSearch(e.target.value)}
-                className="lg:w-60 md:w-24 mr-3 sm:w-32 w-40  text-black px-1  md:px-2 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onClick={() => setIsOpen(!isOpen)}
-            />
-            <FontAwesomeIcon className='relative lg:-left-12 md:-left-10 -left-9 text-lg text-gray-800 md:h-6 md:w-6 w-5 h-5 top-0.5'  icon={faShare} ></FontAwesomeIcon>
+        <div ref={containerRef} className="relative">
+            <div className="relative flex items-center">
+                <input
+                    type="text"
+                    placeholder={placeholder}
+                    value={searchValue}
+                    onChange={(e) => onSearch(e.target.value)}
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="w-40 sm:w-56 text-gray-800 text-xs sm:text-sm pl-8 pr-3 py-1.5 rounded-lg border border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <FaShareAlt className="absolute left-2.5 text-gray-400 text-xs pointer-events-none" />
+            </div>
             {isOpen && (
-                <div className=''>
-                <ul className="absolute lg:left-0 md:-left-24 left-0 max-h-80 sm:max-w-60 sm:min-w-36 min-w-44 bg-white border rounded-md shadow-lg mt-1 z-10 overflow-y-auto">
+                <ul className="absolute right-0 mt-1 max-h-60 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-y-auto">
                     {items.length === 0 ? (
-                        <li className="px-4 py-2 text-gray-500">No results</li>
+                        <li className="px-3 py-2 text-xs text-gray-500">No users found</li>
                     ) : (
                         items.map((item, index) => (
                             <li
                                 key={index}
                                 onClick={() => handleItemClick(item)}
-                                className="border-2 border-gray-200 px-4 py-2 text-black hover:bg-gray-200 cursor-pointer"
+                                className="px-3 py-2 text-xs text-gray-800 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition border-b border-gray-100 last:border-b-0"
                             >
                                 {item}
                             </li>
                         ))
                     )}
                 </ul>
-                </div>
             )}
         </div>
     );
 };
 
-// Header Component
-const Header = ({ sheetId }) => {
-    const {id} = useParams()
-    const [undoStack, setUndoStack] = useState([]);
-    const [redoStack, setRedoStack] = useState([]);
+const Header = ({ sheetId, title, cells, onSave, onImport }) => {
+    const { id } = useParams();
+    const effectiveSheetId = sheetId || id;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [noti, setNoti] = useState(false);
-    const [ShareMsg, setShareMsg] = useState(false);
-    const [FailedMsg, setFailedMsg] = useState(false);
-    const [selectedEmail, setSelectedEmail] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [SheetDATA, setSheetDATA] = useState([])
-    const UserId = localStorage.getItem('UserId')
-    const [showCollabNoti,setShowCollabNoti] = useState(false)
-    const [User,setUser] = useState([])
-    const [temp,setTemp] = useState([])
+    const [allUsers, setAllUsers] = useState([]);
     const [filterUsers, setFilteredUsers] = useState([]);
-    const [Loading, setLoading] = useState(false)
-    const [cellHeight, setCellHeight] = useState(22); // Default height
-    const [cellWidth, setCellWidth] = useState(90); // Default width
-    const [gridWidth, setGridWidth] = useState(1240); // Default grid width
-    const Navigate = useNavigate()
+    const [isSaving, setIsSaving] = useState(false);
+    const fileInputRef = useRef(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
+        let isMounted = true;
         const fetchUsers = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/api/emails`);
-                if (response && response.data) {
-                    const emails = response.data.data.map(user => user.username);
-                    setTemp(emails);
+                if (response.data && response.data.data && isMounted) {
+                    const currentUsername = localStorage.getItem('username') || '';
+                    const emails = response.data.data
+                        .map((u) => u.username)
+                        .filter((u) => u && u.toLowerCase() !== currentUsername.toLowerCase());
+                    setAllUsers(emails);
                     setFilteredUsers(emails);
                 }
             } catch (err) {
-                console.log("Error in fetching collaborators");
+                console.error('Error fetching collaborators:', err);
             }
         };
         fetchUsers();
         return () => {
-            // toast.loading("Loading... Emails")
-            setLoading(true)
-        }
+            isMounted = false;
+        };
     }, []);
 
     useEffect(() => {
-        const filtered = temp.filter(email => email.toLowerCase().includes(searchTerm.toLowerCase()));
-        setFilteredUsers(filtered);
-    }, [searchTerm, temp]);
-
-
-    const handleSave = () => {
-        console.log("hello data save")
-        Navigate('/workspace')
-        setNoti(true);
-        setTimeout(() => setNoti(false), 3000);
-    }; 
-
-    const handleUndo = () => {
-        if (undoStack.length > 0) {
-            const lastAction = undoStack.pop();
-            setRedoStack([lastAction, ...redoStack]);
-            console.log('Undo action:', lastAction);
+        if (!searchTerm) {
+            setFilteredUsers(allUsers);
+        } else {
+            const filtered = allUsers.filter((email) =>
+                email.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            setFilteredUsers(filtered);
         }
-    };
+    }, [searchTerm, allUsers]);
 
-    const handleRedo = () => {
-        if (redoStack.length > 0) {
-            const lastUndo = redoStack.shift();
-            setUndoStack([...undoStack, lastUndo]);
-            console.log('Redo action:', lastUndo);
-        }
-    };
-
-    
-
-    const HandleSelectForEmail = async (email) => {
-        setSearchTerm(`${email.slice(0, 4)}`);
-        setSelectedEmail(email);
+    const handleSaveAndBack = async () => {
+        setIsSaving(true);
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/user/share`, {
-                email,
-                sheetId,
-            });
-    
+            if (onSave) {
+                await onSave();
+            }
+            toast.success('Spreadsheet saved');
+            navigate('/workspace');
+        } catch (err) {
+            console.error('Save error:', err);
+            toast.error('Failed to save spreadsheet');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleExportCSV = () => {
+        if (!cells || !cells.length) {
+            toast.error('No spreadsheet data to export');
+            return;
+        }
+
+        try {
+            // Find non-empty bounds to make exported CSV clean
+            const csvRows = cells.map((row) =>
+                row
+                    .map((cell) => {
+                        const val = cell !== undefined && cell !== null ? String(cell) : '';
+                        // Escape quotes and wrap in quotes if contains comma or newline
+                        if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+                            return `"${val.replace(/"/g, '""')}"`;
+                        }
+                        return val;
+                    })
+                    .join(',')
+            );
+
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${title || 'spreadsheet'}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            toast.success('Spreadsheet exported as CSV');
+        } catch (err) {
+            console.error('CSV export error:', err);
+            toast.error('Failed to export CSV');
+        }
+    };
+
+    const handleImportCSVClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const text = event.target.result;
+                const rows = text.split(/\r?\n/).map((row) => {
+                    // Simple CSV parser supporting quotes
+                    const result = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < row.length; i++) {
+                        const char = row[i];
+                        if (char === '"' && row[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            result.push(current);
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    result.push(current);
+                    return result;
+                });
+
+                if (onImport) {
+                    onImport(rows);
+                    toast.success('CSV imported successfully');
+                }
+            } catch (parseErr) {
+                console.error('Failed to parse CSV:', parseErr);
+                toast.error('Invalid CSV file format');
+            }
+        };
+        reader.readAsText(file);
+        // Reset file input so re-selecting same file works
+        e.target.value = '';
+    };
+
+    const handleShareUser = async (email) => {
+        setSearchTerm(email);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.post(
+                `${API_BASE_URL}/api/add-collaborator`,
+                {
+                    spreadsheetId: effectiveSheetId,
+                    collaboratorUsername: email,
+                },
+                {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                }
+            );
+
             if (response.status === 200) {
-                setShareMsg(`Successfully shared the sheet with ${email}!`);
-                showCollabNoti(true);
-                setTimeout(() => {
-                    setShareMsg("");
-                    setShowCollabNoti(false);
-                }, 3000); // Hide notification after 3 seconds
-                console.log("Successfully Shared with:", email);
-                toast.success(`Successfully Shared with:  ${email}`)
-            } else if (response.status === 404) {
-                setFailedMsg("Email does not exist in the database or sheet not found.");
-                console.log("Email does not exist or sheet not found:", email);
-            } else {
-                toast.error(`Unexpected error occurred while sharing with ${email}`)
-                setFailedMsg(`Unexpected error occurred while sharing with ${email}`);
-                console.log("Unexpected error:", response.status);
+                toast.success(`Shared with ${email}!`);
+                setSearchTerm('');
             }
         } catch (err) {
-            setSearchTerm("");
-            toast.error("Error occurred during sharing!! Not Shared ")
-            // setFailedMsg(`Failed to share with ${email} due to a server error.`);
-            console.log("Error adding collaborator:", err);
+            console.error('Error sharing sheet:', err);
+            const errMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to share';
+            toast.error(errMsg);
         }
     };
-    useEffect(() => {
-        console.log("Updated Cell Height:", cellHeight);
-        // OnH(cellHeight); // Use updated height value
-    }, [cellHeight]); // Dependency array to run effect on height change
-    
-    useEffect(() => {
-        console.log("Updated Cell Width:", cellWidth);
-        // OnW(cellWidth); // Use updated width value
-    }, [cellWidth]); // Dependency array to run effect on width change
-
 
     return (
-        <header className="bg-gray-800 text-white md:px-2 py-1 lg:py-3 flex flex-row md:flex-row md:justify-between min-w-full items-center space-y-0 md:space-y-0 sm:px-4">
-            {/* Menu Button for Small Devices */}
-            <button
-                className="md:hidden text-white text-xl mb-4"
-                onClick={() => {
-                    setIsMenuOpen(!isMenuOpen);
-                    // isMenuOpeN();
-                }}
-            >
-                {isMenuOpen ? (
-                    <FontAwesomeIcon className='ml-2 mt-4 w-8 h-8 sm:mr-0 mr-1' icon={faClose} />
-                ) : (
-                    <FaBars className='ml-2 mt-2 w-8 h-8 sm:mr-0 mr-1' />
-                )}
-            </button>
-
-            {/* Dropdown Menu for Small Devices */}
-            {isMenuOpen && (
-                <div 
-                className="md:hidden absolute top-16 left-4 right-4 bg-gray-800 border border-gray-600 rounded-lg p-4 space-y-2"
-                style={{ zIndex: 1000, position: 'absolute' }} // Ensure a high z-index and positioning
+        <header className="bg-gray-900 text-white px-3 sm:px-4 py-2 flex items-center justify-between shadow-md select-none">
+            {/* Left side actions */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
+                <button
+                    onClick={() => navigate('/workspace')}
+                    className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition"
+                    title="Back to Workspace"
                 >
-                    <CreateSSNewList/>
-                    
-                    <button onClick={handleSave} className="flex items-center bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded w-full text-sm">
-                        <FaSave className="inline mr-1" />
-                        Save & Back
+                    <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4" />
+                </button>
+
+                <div className="hidden md:flex items-center space-x-2">
+                    <CreateSSNew />
+
+                    <button
+                        onClick={handleSaveAndBack}
+                        disabled={isSaving}
+                        className="flex items-center bg-green-600 hover:bg-green-700 text-white font-medium py-1.5 px-3 rounded-md text-xs sm:text-sm transition shadow-sm"
+                    >
+                        <FaSave className="mr-1.5" />
+                        {isSaving ? 'Saving...' : 'Save & Back'}
                     </button>
-                    <button className="flex items-center bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded w-full text-sm">
-                        <FaFileImport className="inline mr-1" />
+
+                    <button
+                        onClick={handleImportCSVClick}
+                        className="flex items-center bg-amber-600 hover:bg-amber-700 text-white font-medium py-1.5 px-3 rounded-md text-xs sm:text-sm transition shadow-sm"
+                    >
+                        <FaFileImport className="mr-1.5" />
                         Import
                     </button>
-                    <button className="flex items-center bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded w-full text-sm">
-                        <FaFileExport className="inline mr-1" />
+
+                    <button
+                        onClick={handleExportCSV}
+                        className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-1.5 px-3 rounded-md text-xs sm:text-sm transition shadow-sm"
+                    >
+                        <FaFileExport className="mr-1.5" />
                         Export
                     </button>
-                    {/* <button className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded w-full text-sm" onClick={handleUndo}>
-                        <FaUndo className="inline mr-1" />
-                        Undo
-                    </button>
-                    <button className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded w-full text-sm" onClick={handleRedo}>
-                        <FaRedo className="inline mr-1" />
-                        Redo
-                    </button> */}
+
+                    {/* Hidden file input for CSV Import */}
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".csv"
+                        className="hidden"
+                    />
                 </div>
-            )}
 
-            {/* Left side with buttons */}
-            <div className="hidden md:flex flex-col md:flex-row space-x-2 md:space-x-2 mb-2 md:mb-0 w-full md:w-auto">
-
-                <CreateSSNew />
-
-                <button onClick={handleSave} className="flex items-center bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded w-full md:w-auto text-sm">
-                    <FaSave className="inline mr-1" />
-                    Save & Back
+                {/* Mobile hamburger button */}
+                <button
+                    className="md:hidden text-white p-1.5 rounded-md hover:bg-gray-800"
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                >
+                    {isMenuOpen ? <FontAwesomeIcon icon={faClose} className="w-5 h-5" /> : <FaBars className="w-5 h-5" />}
                 </button>
-                <button className="flex items-center bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded w-full md:w-auto text-sm">
-                    <FaFileImport className="inline mr-1" />
-                    Import
-                </button>
-                <button className="flex items-center bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded w-full md:w-auto text-sm">
-                    <FaFileExport className="inline mr-1" />
-                    Export
-                </button>
-                {/* <AddCollaboratorForm spreadsheetId={id}/> */}
-                {/* <button className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded w-full md:w-auto text-sm" onClick={handleUndo}>
-                    <FaUndo className="inline mr-1" />
-                    Undo
-                </button>
-                <button className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded w-full md:w-auto text-sm" onClick={handleRedo}>
-                    <FaRedo className="inline mr-1" />
-                    Redo
-                </button> */}
-
             </div>
 
-            {/* <div className='relative  left-2 sm:left-2 md:left-2 lg:left-4 top-1' style={{ marginBottom: '10px' }}>
-            </div> */}
+            {/* Title display */}
+            <div className="truncate px-2 text-center">
+                <span className="text-sm sm:text-base font-semibold text-gray-100 truncate">
+                    {title || 'Spreadsheet'}
+                </span>
+            </div>
 
-            {/* Notification and Search */}
-            {/* <div>
-                { isMenuOpen ? <></> : <div className=" 0 text-sm sm:flex bg-gray-700 text-white p-2 rounded-md transition-transform transform hover:scale-105 ml-4 lg:w-auto sm:w-30 w-30  text-center">
-                    Row: {showColumn}<span> _-_ </span> Col: {showRow}
-                </div>}
-            </div> */}
-            <div className="flex-grow flex items-center justify-center relative">
-                {noti && (
-                    <>
-                        <h1 className='absolute top-10 right-10 bg-blue text-3xl text-red-600'>Hiii Msg</h1>
-                        <div className="absolute top-0 right-0 bg-green-500 text-white p-2 rounded-md">
-                            Saved!
-                        </div>
-                    </>
-                )}
+            {/* Right side sharing & profile */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
                 <CustomDropDown
                     items={filterUsers}
-                    onSelect={HandleSelectForEmail}
-                    placeholder="Share this Sheet"
+                    onSelect={handleShareUser}
+                    placeholder="Share with..."
                     searchValue={searchTerm}
                     onSearch={setSearchTerm}
-
                 />
-                {/* <span className='relative  text-xl font-medium text-gradient bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-blue-500 hover:underline hover:decoration-red-500'>
-                    ShareSheet
-                </span> */}
-                <div className='absolute right-0 sm:mr-0 mr-2'>
-                    <FontAwesomeIcon className='relative right-0 ml-2 hover:cursor-pointer text-2xl' icon={faUser}></FontAwesomeIcon>
-                </div>
+
+                <button
+                    onClick={() => navigate('/workspace')}
+                    className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-800 rounded-full transition"
+                    title="Profile / Workspace"
+                >
+                    <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
+                </button>
             </div>
-            {showCollabNoti && (
-                <>
-                <h1 className='absolute top-10 right-10 bg-blue text-3xl text-red-600'>Hiii Msg</h1>
-                <CollabNoti
-                    message= {ShareMsg} 
-                    onClose={() => setShowCollabNoti(false)} 
-                    />
-                </>
+
+            {/* Mobile dropdown menu */}
+            {isMenuOpen && (
+                <div className="md:hidden absolute top-14 left-3 right-3 bg-gray-800 border border-gray-700 rounded-lg p-3 space-y-2 shadow-xl z-50">
+                    <CreateSSNewList />
+
+                    <button
+                        onClick={handleSaveAndBack}
+                        className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-md text-sm transition"
+                    >
+                        <FaSave className="mr-2" />
+                        Save & Back
+                    </button>
+
+                    <button
+                        onClick={handleImportCSVClick}
+                        className="w-full flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-3 rounded-md text-sm transition"
+                    >
+                        <FaFileImport className="mr-2" />
+                        Import CSV
+                    </button>
+
+                    <button
+                        onClick={handleExportCSV}
+                        className="w-full flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-3 rounded-md text-sm transition"
+                    >
+                        <FaFileExport className="mr-2" />
+                        Export CSV
+                    </button>
+                </div>
             )}
-            {
-                ShareMsg && <div className="fixed bottom-4 left-4 bg-green-500 text-white p-4 rounded-lg shadow-lg flex items-center space-x-3">
-                                <FaCheckCircle className="text-2xl" />
-                                <span>{ShareMsg}</span>
-                                <button
-                                    onClick={()=>setShareMsg("")}
-                                    className="ml-auto bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded"
-                                >
-                                    OK
-                                </button>
-                            </div>
-            }
-            {
-                FailedMsg && <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg flex items-center space-x-3">
-                                <FaRegCheckCircle className="text-2xl" />
-                                <span>{FailedMsg}</span>
-                                <button
-                                    onClick={()=>setFailedMsg("")}
-                                    className="ml-auto bg-red-700 hover:bg-red-800 text-white font-bold py-1 px-2 rounded"
-                                >
-                                    OK
-                                </button>
-                            </div>
-            }
-            <Toaster/>
-            {/* {
-                Loading && ( 
-                    <div className="fixed bottom-4 left-4 bg-green-500 text-white p-4 rounded-lg shadow-lg flex items-center space-x-3">
-                        <FaDownload className="text-2xl" />
-                        <span>Loading...</span>
-                        <button
-                            onClick={()=> setLoading(false)}
-                            className="ml-auto bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded"
-                        >
-                            OK
-                        </button>
-                    </div>
-                )
-            } */}
-            
-            {/* Other components and logic */}
         </header>
     );
 };

@@ -15,17 +15,19 @@ const Login = () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/api/login`, { username, password });
       if (response.status === 200) {
-        localStorage.setItem('token', `Bearer ${response.data.token}`);
-        const decodeToken = jwtDecode(response.data.token);
+        const token = response.data.token;
+        localStorage.setItem('token', token);
+        const decodeToken = jwtDecode(token);
         localStorage.setItem('userId', decodeToken.userId);
+        localStorage.setItem('username', response.data.user?.username || username);
         setUsername('');
         setPassword('');
         toast.success('Login successful');
-        // navigate('/dashboard');
+        navigate('/workspace');
       }
     } catch (error) {
-      toast.error(`Failed to login: ${error.response.data.error}`);
-      setUsername('');
+      const errMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to login';
+      toast.error(errMsg);
       setPassword('');
     }
   };

@@ -4,22 +4,32 @@ import { Toaster, toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../config/api';
 
+import { jwtDecode } from 'jwt-decode';
+
 const UserRegistration = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const response = await axios.post(`${API_BASE_URL}/api/register`, { username, password });
       if (response.status === 200) {
         toast.success('Registration successful');
-        navigate('/login');
+        if (response.data.token) {
+          const token = response.data.token;
+          localStorage.setItem('token', token);
+          const decodeToken = jwtDecode(token);
+          localStorage.setItem('userId', decodeToken.userId);
+          localStorage.setItem('username', response.data.user?.username || username);
+          navigate('/workspace');
+        } else {
+          navigate('/login');
+        }
       }
-      
-
     } catch (error) {
-      const errMsg = error.response?.data?.error || 'Failed to register user';
+      const errMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to register user';
       toast.error(errMsg);
     }
   };

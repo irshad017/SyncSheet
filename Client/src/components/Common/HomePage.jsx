@@ -55,76 +55,92 @@ const HomePage = () => {
     useEffect(() => {
         const Token = localStorage.getItem('token');
         const userId = localStorage.getItem('userId');
+        const storedUser = localStorage.getItem('username');
         if (Token && userId) {
             setMyBool(true);
+            if (storedUser) {
+                setSHOWUsername(storedUser.split('@')[0]);
+            } else {
+                try {
+                    const rawToken = Token.replace(/^Bearer\s+/i, '');
+                    const decoded = jwtDecode(rawToken);
+                    if (decoded.username) {
+                        setSHOWUsername(decoded.username.split('@')[0]);
+                    }
+                } catch (e) {
+                    console.error('Failed to decode token on load:', e);
+                }
+            }
         }
-    }, []);
+    }, [setMyBool]);
 
-    const HandleLogout = ()=>{
-        localStorage.removeItem('userId')
-        localStorage.removeItem('token')
-        setMyBool(false)
-        Navigate('/')
-    }
+    const HandleLogout = () => {
+        localStorage.removeItem('userId');
+        localStorage.removeItem('token');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('username');
+        setMyBool(false);
+        setSHOWUsername('');
+        Navigate('/');
+    };
 
-    const toggleBoolean = ()=>{
-        // console.log(MyBool)
-        setMyBool(prev => !prev)
-        // console.log(MyBool)
-    }
-    
-        // P - LOGin
-        // P - LOGin
-        const handleSubmitLog = async (e) => {
+    const toggleBoolean = () => {
+        setMyBool(prev => !prev);
+    };
+
+    // P - LOGin
+    const handleSubmitLog = async (e) => {
         e.preventDefault();
         try {
             const response = await axios.post(`${API_BASE_URL}/api/login`, { username, password });
             if (response.status === 200) {
-            // console.log(response)
-            localStorage.setItem('token', `Bearer ${response.data.token}`);
-            const decodeToken = jwtDecode(response.data.token);
-            localStorage.setItem('userId', decodeToken.userId);
-            const data2 = username.split('@')[0]
-            setSHOWUsername(data2)
-            setUsername('');
-            setPassword('');
-            toast.success('Login successful');
-            handleClose()
-            toggleBoolean()
-            Navigate('/')
+                const token = response.data.token;
+                localStorage.setItem('token', token);
+                const decodeToken = jwtDecode(token);
+                localStorage.setItem('userId', decodeToken.userId);
+                const userDisplay = (response.data.user?.username || username);
+                localStorage.setItem('username', userDisplay);
+                setSHOWUsername(userDisplay.split('@')[0]);
+                setUsername('');
+                setPassword('');
+                toast.success('Login successful');
+                handleClose();
+                setMyBool(true);
+                Navigate('/');
             }
         } catch (error) {
-            console.log(error)
-            toast.error(`Failed to login: ${error.response.data.error}`);
+            console.log(error);
+            const errMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to login';
+            toast.error(errMsg);
         }
-        };
+    };
 
-        // // P - SIGNUP
-        // // P - SIGNUP
-        const handleSubmitSign = async (e) => {
+    // P - SIGNUP
+    const handleSubmitSign = async (e) => {
         e.preventDefault();
-            try {
+        try {
             const response = await axios.post(`${API_BASE_URL}/api/register`, { username, password });
             if (response.status === 200) {
                 toast.success('Registration successful');
-                localStorage.setItem('token', `Bearer ${response.data.token}`);
-                const decodeToken = jwtDecode(response.data.token);
+                const token = response.data.token;
+                localStorage.setItem('token', token);
+                const decodeToken = jwtDecode(token);
                 localStorage.setItem('userId', decodeToken.userId);
-                const data2 = username.split('@')[0]
-                setSHOWUsername(data2)
+                const userDisplay = (response.data.user?.username || username);
+                localStorage.setItem('username', userDisplay);
+                setSHOWUsername(userDisplay.split('@')[0]);
                 setUsername('');
                 setPassword('');
-                handleClose()
-                toggleBoolean()
+                handleClose();
+                setMyBool(true);
                 Navigate('/');
-                
-            }  
+            }
         } catch (error) {
             console.log(error);
-            const errMsg = error.response?.data?.error || 'Failed to register user';
+            const errMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to register user';
             toast.error(errMsg);
         }
-        };
+    };
 
     
 

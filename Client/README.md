@@ -1,8 +1,23 @@
-# React + Vite
+# SyncSheet Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend web application for **SyncSheet**, built with React 18, Vite, and Tailwind CSS.
 
-Currently, two official plugins are available:
+## 🌐 Live Deployment
+- **Production URL:** [https://sheetsync-client.vercel.app](https://sheetsync-client.vercel.app)
+- **Backend API:** [https://back-it.onrender.com/api/spreadsheet/](https://back-it.onrender.com/api/spreadsheet/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ⚙️ Environment Configuration
+
+Create a `.env` file in this directory:
+
+```env
+VITE_API_URL=https://back-it.onrender.com
+VITE_BACKEND_URL=https://back-it.onrender.com
+VITE_SPREADSHEET_API=https://back-it.onrender.com/api/spreadsheet/
+```
+
+## 🛠️ Scripts
+
+- `npm run dev` - Run development server (`http://localhost:5173`)
+- `npm run build` - Create production build in `dist/`
+- `npm run preview` - Preview production build locally

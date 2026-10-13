@@ -1,98 +1,162 @@
 # ✨ SyncSheet ✨
-### *Collaborative, Real-Time, and Secure Spreadsheet Management*
-**Deployed Project:** [https://sheet-sync-4k8b.vercel.app](https://sheet-sync-4k8b.vercel.app)
 
-Welcome to **SyncSheet**—an innovative, real-time spreadsheet application that fosters collaboration and interaction among users. Work on your spreadsheets simultaneously with others, engage in discussions, and manage your data securely—all within a beautifully crafted interface.
+### *Collaborative, Real-Time, and Secure Spreadsheet Management*
+
+[![Vercel Deployment](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://sheetsync-client.vercel.app)
+[![Render Backend](https://img.shields.io/badge/Backend%20on-Render-46E3B7?style=for-the-badge&logo=render)](https://back-it.onrender.com/api/spreadsheet/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-irshad017%2FSyncSheet-181717?style=for-the-badge&logo=github)](https://github.com/irshad017/SyncSheet)
 
 ---
 
-## 🌟 Features
+## 🌐 Live Deployments
+
+- **Frontend Live URL (Vercel):** [https://sheetsync-client.vercel.app](https://sheetsync-client.vercel.app)
+- **Alternative Deployment URL:** [https://sheetsync-client-iff5fig3v-irshad-hussains-projects.vercel.app](https://sheetsync-client-iff5fig3v-irshad-hussains-projects.vercel.app)
+- **Backend API Deployment (Render):** [https://back-it.onrender.com/api/spreadsheet/](https://back-it.onrender.com/api/spreadsheet/)
+
+---
+
+## 📖 Overview
+
+**SyncSheet** is a real-time collaborative spreadsheet web application built for teams and individuals. It offers instant updates, live collaborator tracking, cell formatting, email-based sheet sharing, and secure user authentication.
+
+---
+
+## 🌟 Key Features
 
 ### 📊 Real-Time Collaboration
-- Collaborate with multiple users on the same spreadsheet—changes reflect instantly for everyone.
-- **WebSockets** power the real-time updates, ensuring a smooth experience.
-- Keep track of who’s editing what in real-time.
+- Multiple users can view and edit the same spreadsheet simultaneously.
+- **WebSocket connection (`wss://`)** synchronizes cell values and active selections in real-time.
+- Visual cell selection tracking to see active collaborator focus.
 
-### 💬 Social Interaction
-- Easily share your spreadsheets via email or unique links.
-- Engage in threaded discussions about the data directly within the sheet—perfect for teamwork.
-- Comment on specific cells or sections, and tag collaborators for instant feedback.
+### 💬 Collaborator Sharing
+- Search users by email/username and grant access to spreadsheets.
+- Built-in sharing system to manage sheet permissions and team access.
 
-### 🔒 User Authentication
-- **Secure login and registration system** keeps your data safe.
-- **JWT Authentication** protects user sessions.
-- **bcrypt** securely hashes and stores passwords, ensuring that your credentials are encrypted.
-
----
-
-## 🛠️ Technologies Used
-
-### Frontend
-- **React.js**: Dynamic and reactive UI components for an intuitive user experience.
-- **Tailwind CSS**: Stylish, responsive, and utility-first CSS for beautiful layouts.
-- **JavaScript (ES6+)**: Harness the power of modern JavaScript for maintainability and performance.
-- **WebSockets**: For real-time, bi-directional communication between users.
-
-### Backend
-- **Node.js**: Asynchronous, event-driven backend for high performance.
-- **Express.js**: Lightweight and flexible framework to power the API.
-- **MongoDB**: NoSQL database storing user data, spreadsheets, and version history.
-
-### Authentication
-- **JWT (JSON Web Tokens)**: Session-based, secure user authentication.
-- **bcrypt**: Industry-standard password hashing for user security.
+### 🔒 User Authentication & Security
+- **JWT (JSON Web Tokens)**: Secure token-based session handling.
+- **bcrypt**: Industry-standard password hashing before persistence.
+- Protected API routes requiring token authorization.
 
 ---
 
-## 🚀 Getting Started
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 18, Vite, Tailwind CSS, Recoil, React Window, Axios, React Hot Toast |
+| **Backend** | Node.js, Express.js, WebSockets (`ws`), Mongoose, JWT, bcrypt |
+| **Database** | MongoDB (MongoDB Atlas) |
+| **Deployment** | **Vercel** (Frontend SPA) + **Render** (Node.js & WebSocket Backend) |
+
+---
+
+## ⚙️ Environment Variables
+
+### Frontend (`Client/.env`)
+Create a `.env` file inside the `Client` directory:
+
+```env
+# Render Backend Base URL
+VITE_API_URL=https://back-it.onrender.com
+
+# Backend Deployment Base URL
+VITE_BACKEND_URL=https://back-it.onrender.com
+
+# Spreadsheet API Endpoint
+VITE_SPREADSHEET_API=https://back-it.onrender.com/api/spreadsheet/
+```
+
+> **Note:** The frontend automatically derives the secure WebSocket URL (`wss://back-it.onrender.com`) from the configured HTTP base URL.
+
+---
+
+## 🚀 Local Development Setup
 
 ### Prerequisites
-- **Node.js** (v14.x or higher)
-- **MongoDB** (local or MongoDB Atlas)
-- **npm** (installed with Node.js)
+- [Node.js](https://nodejs.org/) (v16.x or higher)
+- [npm](https://www.npmjs.com/) (v8.x or higher)
+- [Git](https://git-scm.com/)
+- MongoDB connection string (local or MongoDB Atlas)
 
-## Local Setup Instructions (Write for both windows and macos)
+---
 
-Follow these steps to run the project locally
+### Step 1: Clone the Repository
 
-1. **Clone the repository:**
+```bash
+git clone https://github.com/irshad017/SyncSheet.git
+cd SyncSheet
+```
 
+---
+
+### Step 2: Backend Setup (`Server`)
+
+1. Navigate to the `Server` directory:
    ```bash
-   git clone https://github.com/Priyesh1311421/SocialCalc.git
-   cd SocialCalc
+   cd Server
    ```
-
-2. **Install dependencies for both frontend and backend:**
-
+2. Install dependencies:
    ```bash
-   # Install backend dependencies
-   cd backend
    npm install
+   ```
+3. Set your MongoDB connection URI in `server.js` (line 15) or as an environment variable:
+   ```javascript
+   mongoose.connect(process.env.MONGO_URI || 'YOUR_MONGODB_CONNECTION_STRING')
+   ```
+4. Start the backend server:
+   ```bash
+   node server.js
+   ```
+   *The server runs on `http://localhost:5000`.*
 
-   # Install frontend dependencies
-   cd ../frontend
+---
+
+### Step 3: Frontend Setup (`Client`)
+
+1. Open a new terminal and navigate to the `Client` directory:
+   ```bash
+   cd Client
+   ```
+2. Install dependencies:
+   ```bash
    npm install
    ```
-3. **Add your own mongo db url:**
-
-   Locate server.js file in backend folder and your own mongodb url in line number 15.
-   
-4. **Run the application:**
-
+3. Create your `.env` file (pointing to local backend or production backend):
+   ```env
+   VITE_API_URL=http://localhost:5000
+   VITE_SPREADSHEET_API=http://localhost:5000/api/spreadsheet/
+   ```
+4. Start the Vite development server:
    ```bash
-   # Start the backend server
-   cd server
-   npm run dev
-
-   # Start the frontend server
-   cd client
    npm run dev
    ```
+   *The client will be running at `http://localhost:5173`.*
 
-   The application will be available at `http://localhost:5000` for backend and `http://localhost:5173` for frontend
+---
 
-## Usage
+## 📦 Building & Deploying to Vercel
 
-- **Create Spreadsheets:** Start a new spreadsheet or open an existing one.
-- **Collaborate in Real-Time:** Invite others to collaborate on your spreadsheet, with updates appearing live.
-- **Engage Socially:** Share your spreadsheet with others and discuss changes in real-time through the built-in commenting system.
+The frontend is configured with `vercel.json` for seamless Single Page Application (SPA) rewrites.
+
+### Deploying via Vercel CLI
+
+```bash
+cd Client
+npx vercel --prod
+```
+
+### Deploying via Vercel Dashboard
+
+1. Import the repository `irshad017/SyncSheet` on [Vercel](https://vercel.com).
+2. Set **Root Directory** to `Client`.
+3. Add the following **Environment Variables**:
+   - `VITE_API_URL` = `https://back-it.onrender.com`
+   - `VITE_SPREADSHEET_API` = `https://back-it.onrender.com/api/spreadsheet/`
+4. Click **Deploy**.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.

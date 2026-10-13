@@ -148,8 +148,8 @@ npx vercel --prod
 1. Import the repository `irshad017/SyncSheet` on [Vercel](https://vercel.com).
 2. Set **Root Directory** to `Client`.
 3. Add the following **Environment Variables**:
-   - `VITE_API_URL` = `https://back-it.onrender.com`
-   - `VITE_SPREADSHEET_API` = `https://back-it.onrender.com/api/spreadsheet/`
+   - `VITE_API_URL` = `Your_running_backend_url`
+   - `VITE_SPREADSHEET_API` = `your_running_backend_url`
 4. Click **Deploy**.
 
 ---

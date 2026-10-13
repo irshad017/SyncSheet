@@ -11,9 +11,6 @@
 ## 🌐 Live Deployments
 
 - **Frontend Live URL (Vercel):** [https://sheetsync-client.vercel.app](https://sheetsync-client.vercel.app)
-- **Alternative Deployment URL:** [https://sheetsync-client-iff5fig3v-irshad-hussains-projects.vercel.app](https://sheetsync-client-iff5fig3v-irshad-hussains-projects.vercel.app)
-- **Backend API Deployment (Render):** [https://back-it.onrender.com/api/spreadsheet/](https://back-it.onrender.com/api/spreadsheet/)
-
 ---
 
 ## 📖 Overview

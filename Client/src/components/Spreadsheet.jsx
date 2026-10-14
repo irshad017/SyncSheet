@@ -68,6 +68,8 @@ const Cell = memo(({ rowIndex, columnIndex, style, data }) => {
   );
 });
 
+Cell.displayName = 'Cell';
+
 function Spreadsheet() {
   const { id } = useParams();
   const navigate = useNavigate();

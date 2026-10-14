@@ -44,10 +44,10 @@ const UserRegistration = () => {
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">Username:</label>
             <input
-              type="email"
+              type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder='Enter username(Email)'
+              placeholder="Enter username or email"
               required
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             />

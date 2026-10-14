@@ -57,7 +57,10 @@ function WorkSpace() {
         if (!confirmDelete) return;
 
         try {
-            await axios.delete(`${API_BASE_URL}/api/spreadsheet/${sheetId}`);
+            const token = localStorage.getItem('token');
+            await axios.delete(`${API_BASE_URL}/api/spreadsheet/${sheetId}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
             setSpreadsheets((prev) => prev.filter((item) => (item._id || item) !== sheetId));
             toast.success('Spreadsheet deleted successfully');
         } catch (err) {
@@ -214,7 +217,7 @@ const Templates = memo(({ spreadsheets, searchTerm, loading, onDelete }) => {
 
             {!loading && filteredSheets.length === 0 && searchTerm && (
                 <div className="text-center py-12 text-gray-500">
-                    No spreadsheets found matching "{searchTerm}"
+                    No spreadsheets found matching &quot;{searchTerm}&quot;
                 </div>
             )}
         </div>
@@ -309,5 +312,9 @@ const ProfileSlider = memo(({ isOpen, onClose, user, spreadsheets }) => {
         </div>
     );
 });
+
+Header.displayName = 'Header';
+Templates.displayName = 'Templates';
+ProfileSlider.displayName = 'ProfileSlider';
 
 export default WorkSpace;

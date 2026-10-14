@@ -170,7 +170,11 @@ app.get('/api/user/:id', async (req, res) => {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    const user = await User.findById(id).populate('spreadsheet');
+    const user = await User.findById(id).populate({
+      path: 'spreadsheet',
+      select: 'name date owner collaborators',
+      populate: { path: 'owner', select: 'username _id' },
+    });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -367,7 +371,11 @@ app.post('/api/spreadsheet/:id', async (req, res) => {
   }
 });
 
-// DELETE SPREADSHEET (RESTFUL ROUTE USED BY CLIENT)
+// DELETE SPREADSHEET (OR REMOVE FOR COLLABORATOR)
+// Rules:
+// 1. If requester is the Owner (Creator/Admin): Permanently deletes the sheet for everyone and cleans all user references.
+// 2. If requester is a Collaborator: Removes the sheet ONLY from their spreadsheet list and removes them from collaborators; owner and other collaborators keep access.
+// 3. Edge Cases: Handles missing/dangling documents, missing tokens, invalid IDs, and notifies active WS clients.
 app.delete('/api/spreadsheet/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -375,25 +383,101 @@ app.delete('/api/spreadsheet/:id', async (req, res) => {
     return res.status(400).json({ error: 'Invalid spreadsheet ID' });
   }
 
+  // Extract requester userId from token header or query/body fallback
+  let requesterId = req.query.userId || req.body?.userId;
+
+  const authHeader = req.header('Authorization');
+  if (authHeader) {
+    try {
+      const parts = authHeader.split(' ');
+      const token = parts.length === 2 && parts[0] === 'Bearer' ? parts[1] : parts[0];
+      if (token) {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.userId) {
+          requesterId = decoded.userId;
+        } else if (decoded.username) {
+          const u = await User.findOne({ username: decoded.username });
+          if (u) requesterId = u._id.toString();
+        }
+      }
+    } catch (tokenErr) {
+      console.warn('Auth token verify failed in delete, using provided requesterId if available');
+    }
+  }
+
+  if (!requesterId || !mongoose.Types.ObjectId.isValid(requesterId)) {
+    return res.status(401).json({ error: 'Authentication or valid userId required to delete/remove spreadsheet' });
+  }
+
   try {
     const cell = await Cell.findById(id);
+
+    // EDGE CASE 1: Spreadsheet document does not exist in DB (already deleted or orphaned)
     if (!cell) {
-      return res.status(404).json({ error: 'Spreadsheet not found' });
+      // Clean up the dangling reference from the requesting user's list anyway
+      await User.findByIdAndUpdate(requesterId, {
+        $pull: { spreadsheet: id },
+      });
+      return res.status(200).json({
+        message: 'Spreadsheet reference removed from your workspace',
+        isOwner: false,
+        action: 'removed',
+      });
     }
 
-    // Remove spreadsheet reference from owner and all collaborators
-    await User.updateMany(
-      { spreadsheet: id },
-      { $pull: { spreadsheet: id } }
-    );
+    const isOwner = Boolean(cell.owner && cell.owner.toString() === requesterId.toString());
 
-    // Delete cell document
-    await Cell.findByIdAndDelete(id);
+    // CASE A: Requester IS the Owner (Admin / Creator)
+    if (isOwner) {
+      // 1. Permanently delete the Cell document
+      await Cell.findByIdAndDelete(id);
 
-    return res.status(200).json({ message: 'Spreadsheet deleted successfully' });
+      // 2. Remove the sheet from all users (owner and collaborators)
+      await User.updateMany(
+        { spreadsheet: id },
+        { $pull: { spreadsheet: id } }
+      );
+
+      // 3. Notify any active WebSocket clients viewing this sheet
+      wsServer.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN && client.spreadsheetId === id) {
+          client.send(
+            JSON.stringify({
+              type: 'deleted',
+              id,
+              message: 'This spreadsheet was permanently deleted by the owner.',
+            })
+          );
+        }
+      });
+
+      return res.status(200).json({
+        message: 'Spreadsheet deleted permanently for all users',
+        isOwner: true,
+        action: 'deleted',
+      });
+    }
+
+    // CASE B: Requester is a Collaborator (NOT the Owner)
+    // 1. Remove the sheet ONLY from this collaborator's spreadsheet array
+    await User.findByIdAndUpdate(requesterId, {
+      $pull: { spreadsheet: id },
+    });
+
+    // 2. Remove this user from the Cell document's collaborators array
+    await Cell.findByIdAndUpdate(id, {
+      $pull: { collaborators: requesterId },
+    });
+
+    // The owner and other collaborators keep their access untouched!
+    return res.status(200).json({
+      message: 'Spreadsheet removed from your workspace',
+      isOwner: false,
+      action: 'removed',
+    });
   } catch (err) {
     console.error('Delete spreadsheet error:', err);
-    return res.status(500).json({ error: 'Failed to delete spreadsheet' });
+    return res.status(500).json({ error: 'Failed to process spreadsheet deletion' });
   }
 });
 
@@ -406,15 +490,30 @@ app.get('/delete/:userDel', async (req, res) => {
     return res.status(400).json({ msg: 'Valid sheetId query parameter is required' });
   }
 
+  if (!userDel || !mongoose.Types.ObjectId.isValid(userDel)) {
+    return res.status(400).json({ msg: 'Valid userDel parameter is required' });
+  }
+
   try {
-    await User.updateMany(
-      { spreadsheet: sheetId },
-      { $pull: { spreadsheet: sheetId } }
-    );
+    const cell = await Cell.findById(sheetId);
+    if (!cell) {
+      await User.findByIdAndUpdate(userDel, { $pull: { spreadsheet: sheetId } });
+      return res.status(200).json({ message: 'Spreadsheet reference removed' });
+    }
 
-    await Cell.findByIdAndDelete(sheetId);
-
-    return res.status(200).json({ message: 'Sheet deleted successfully' });
+    const isOwner = Boolean(cell.owner && cell.owner.toString() === userDel.toString());
+    if (isOwner) {
+      await User.updateMany(
+        { spreadsheet: sheetId },
+        { $pull: { spreadsheet: sheetId } }
+      );
+      await Cell.findByIdAndDelete(sheetId);
+      return res.status(200).json({ message: 'Spreadsheet deleted permanently' });
+    } else {
+      await User.findByIdAndUpdate(userDel, { $pull: { spreadsheet: sheetId } });
+      await Cell.findByIdAndUpdate(sheetId, { $pull: { collaborators: userDel } });
+      return res.status(200).json({ message: 'Spreadsheet removed from your workspace' });
+    }
   } catch (err) {
     console.error('Legacy delete error:', err);
     return res.status(500).json({ msg: 'Not deleted' });

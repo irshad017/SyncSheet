@@ -51,23 +51,33 @@ function WorkSpace() {
         }
     };
 
-    const handleDeleteSheet = async (sheetId) => {
+    const handleDeleteSheet = async (sheetId, isOwner) => {
         if (!sheetId) return;
-        const confirmDelete = window.confirm('Are you sure you want to delete this spreadsheet?');
+        const confirmMessage = isOwner
+            ? 'Are you sure you want to permanently delete this spreadsheet? As the creator, it will be deleted for you and all collaborators.'
+            : 'Are you sure you want to remove this spreadsheet from your workspace? The creator and other collaborators will still keep their access.';
+
+        const confirmDelete = window.confirm(confirmMessage);
         if (!confirmDelete) return;
 
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`${API_BASE_URL}/api/spreadsheet/${sheetId}`, {
+            const userId = localStorage.getItem('userId') || user?._id;
+            const response = await axios.delete(`${API_BASE_URL}/api/spreadsheet/${sheetId}`, {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
+                params: { userId },
             });
             setSpreadsheets((prev) => prev.filter((item) => (item._id || item) !== sheetId));
-            toast.success('Spreadsheet deleted successfully');
+            const msg = response.data?.message || (isOwner ? 'Spreadsheet permanently deleted' : 'Spreadsheet removed from workspace');
+            toast.success(msg);
         } catch (err) {
             console.error('Error deleting spreadsheet:', err);
-            toast.error('Failed to delete spreadsheet');
+            const errMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to delete spreadsheet';
+            toast.error(errMsg);
         }
     };
+
+    const currentUserId = user?._id || localStorage.getItem('userId');
 
     return (
         <div className="flex h-screen bg-gray-50">
@@ -82,6 +92,7 @@ function WorkSpace() {
                         spreadsheets={spreadsheets}
                         searchTerm={searchTerm}
                         loading={loading}
+                        currentUserId={currentUserId}
                         onDelete={handleDeleteSheet}
                         onCreated={handleSheetCreated}
                     />
@@ -134,7 +145,7 @@ const Header = memo(({ onProfileClick, searchTerm, onSearchChange }) => {
     );
 });
 
-const Templates = memo(({ spreadsheets, searchTerm, loading, onDelete }) => {
+const Templates = memo(({ spreadsheets, searchTerm, loading, onDelete, currentUserId }) => {
     const navigate = useNavigate();
 
     const handleOpenSpreadsheet = (spreadsheetId) => {
@@ -177,6 +188,10 @@ const Templates = memo(({ spreadsheets, searchTerm, loading, onDelete }) => {
                         const templateDate = template.date
                             ? new Date(template.date).toLocaleDateString()
                             : '';
+                        const ownerId = template.owner?._id || template.owner;
+                        const isOwner = Boolean(
+                            ownerId && currentUserId && (ownerId.toString() === currentUserId.toString())
+                        );
 
                         return (
                             <div
@@ -184,16 +199,25 @@ const Templates = memo(({ spreadsheets, searchTerm, loading, onDelete }) => {
                                 className="relative border border-gray-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
                             >
                                 <button
-                                    onClick={() => onDelete(templateId)}
+                                    onClick={() => onDelete(templateId, isOwner)}
                                     className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"
-                                    title="Delete spreadsheet"
+                                    title={isOwner ? "Permanently delete spreadsheet (Owner)" : "Remove from your workspace (Collaborator)"}
                                 >
                                     <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
                                 </button>
 
                                 <div className="mb-4">
-                                    <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center mb-3 text-green-600">
-                                        <FontAwesomeIcon icon={faSave} className="text-lg" />
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                                            <FontAwesomeIcon icon={faSave} className="text-lg" />
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                            isOwner
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-purple-100 text-purple-700'
+                                        }`}>
+                                            {isOwner ? 'Owner' : 'Shared'}
+                                        </span>
                                     </div>
                                     <h3 className="text-lg font-semibold text-gray-800 truncate" title={templateName}>
                                         {templateName}

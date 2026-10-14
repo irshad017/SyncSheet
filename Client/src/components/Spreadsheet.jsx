@@ -189,7 +189,13 @@ function Spreadsheet() {
             const { type, cells: updatedCells, selectedCell: updatedSelectedCell, id: msgId } = data;
 
             if (msgId === id) {
-              if (type === 'update' && Array.isArray(updatedCells)) {
+              if (type === 'deleted') {
+                toast.error(data.message || 'This spreadsheet was deleted by the owner.');
+                setTimeout(() => {
+                  navigate('/workspace');
+                }, 1200);
+                return;
+              } else if (type === 'update' && Array.isArray(updatedCells)) {
                 setCells(updatedCells);
               } else if (type === 'select' && updatedSelectedCell) {
                 setSelectedCell(updatedSelectedCell);

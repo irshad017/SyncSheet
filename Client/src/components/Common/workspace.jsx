@@ -67,7 +67,12 @@ function WorkSpace() {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
                 params: { userId },
             });
-            setSpreadsheets((prev) => prev.filter((item) => (item._id || item) !== sheetId));
+            setSpreadsheets((prev) =>
+                prev.filter((item) => {
+                    const id = (item && item._id) ? item._id.toString() : (item ? item.toString() : '');
+                    return id !== sheetId.toString();
+                })
+            );
             const msg = response.data?.message || (isOwner ? 'Spreadsheet permanently deleted' : 'Spreadsheet removed from workspace');
             toast.success(msg);
         } catch (err) {
@@ -199,11 +204,16 @@ const Templates = memo(({ spreadsheets, searchTerm, loading, onDelete, currentUs
                                 className="relative border border-gray-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
                             >
                                 <button
-                                    onClick={() => onDelete(templateId, isOwner)}
-                                    className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onDelete(templateId, isOwner);
+                                    }}
+                                    className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition z-10 cursor-pointer"
                                     title={isOwner ? "Permanently delete spreadsheet (Owner)" : "Remove from your workspace (Collaborator)"}
                                 >
-                                    <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
+                                    <FontAwesomeIcon icon={faTrash} className="w-4 h-4 pointer-events-none" />
                                 </button>
 
                                 <div className="mb-4">
